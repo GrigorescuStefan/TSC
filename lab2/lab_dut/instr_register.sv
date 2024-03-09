@@ -16,7 +16,7 @@ import instr_register_pkg::*;  // user-defined types are defined in instr_regist
  input  opcode_t       opcode,
  input  address_t      write_pointer,
  input  address_t      read_pointer,
- output instruction_t  instruction_word // adaugam rezultat care trebuie sa fie pe un nr de biti pt rezultat
+ output instruction_t  instruction_word // adaugam rezultat care trebuie sa fie pe un nr mare de biti 
 );
   timeunit 1ns/1ns;
 
@@ -29,7 +29,19 @@ import instr_register_pkg::*;  // user-defined types are defined in instr_regist
         iw_reg[i] = '{opc:ZERO,default:0};  // reset to all zeros
     end
     else if (load_en) begin // punem un case, un switch, daca opcode-ul este ADD, facem adunare intre operand_a, operand_b stocata in rezultat
-      iw_reg[write_pointer] = '{opcode,operand_a,operand_b};
+      // iw_reg[write_pointer] = '{opcode,operand_a,operand_b};
+
+      case(opcode)
+        ZERO:     iw_reg[write_pointer] = '{opcode, operand_a, operand_b, {64{1'b0}}};
+        PASSA:    iw_reg[write_pointer] = '{opcode, operand_a, operand_b, operand_a};
+        PASSB:    iw_reg[write_pointer] = '{opcode, operand_a, operand_b, operand_b};
+        ADD:      iw_reg[write_pointer] = '{opcode, operand_a, operand_b, operand_a + operand_b};
+        SUB:      iw_reg[write_pointer] = '{opcode, operand_a, operand_b, operand_a - operand_b};
+        MULT:     iw_reg[write_pointer] = '{opcode, operand_a, operand_b, operand_a * operand_b};
+        DIV:      iw_reg[write_pointer] = '{opcode, operand_a, operand_b, operand_a / operand_b};
+        MOD:      iw_reg[write_pointer] = '{opcode, operand_a, operand_b, operand_a % operand_b};
+        default:  iw_reg[write_pointer] = '{opc:ZERO, default:0};
+      endcase
     end
 
   // read from the register
