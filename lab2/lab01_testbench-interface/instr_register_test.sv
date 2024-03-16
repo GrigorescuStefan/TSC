@@ -20,19 +20,17 @@ module instr_register_test
 
   timeunit 1ns/1ns;
 
-  parameter READ_NR = 20;
-  parameter WRITE_NR = 20;
+  parameter READ_NR = 9;
+  parameter WRITE_NR = 10;
 
   int seed = 555;
-  int expected_result = 0; // rezultat intern folosit la calcul
-
 
   initial begin
-    $display("\n\n***********************************************************");
-    $display(    "***  THIS IS NOT A SELF-CHECKING TESTBENCH (YET).  YOU  ***");
-    $display(    "***  NEED TO VISUALLY VERIFY THAT THE OUTPUT VALUES     ***");
-    $display(    "***  MATCH THE INPUT VALUES FOR EACH REGISTER LOCATION  ***");
-    $display(    "***********************************************************");
+    $display("\n*************************************************************");
+    $display(  "***  THIS IS NOW A SELF-CHECKING TESTBENCH. YOU NO        ***");
+    $display(  "***  LONGER NEED TO VISUALLY VERIFY THE OUTPUT VALUES     ***");
+    $display(  "*** TO MATCH THE INPUT VALUES FOR EACH REGISTER LOCATION  ***");
+    $display(  "*************************************************************\n");
 
     $display("\nReseting the instruction register...");
     write_pointer  = 5'h00;         // initialize write pointer
@@ -60,14 +58,15 @@ module instr_register_test
       // the expected values to be read back
       @(posedge clk) read_pointer = i;
       @(negedge clk) print_results;
+      check_results;
     end
 
     @(posedge clk) ;
-    $display("\n***********************************************************");
-    $display(  "***  THIS IS NOT A SELF-CHECKING TESTBENCH (YET).  YOU  ***");
-    $display(  "***  NEED TO VISUALLY VERIFY THAT THE OUTPUT VALUES     ***");
-    $display(  "***  MATCH THE INPUT VALUES FOR EACH REGISTER LOCATION  ***");
-    $display(  "***********************************************************\n");
+    $display("\n*************************************************************");
+    $display(  "***  THIS IS NOW A SELF-CHECKING TESTBENCH. YOU NO        ***");
+    $display(  "***  LONGER NEED TO VISUALLY VERIFY THE OUTPUT VALUES     ***");
+    $display(  "*** TO MATCH THE INPUT VALUES FOR EACH REGISTER LOCATION  ***");
+    $display(  "*************************************************************\n");
     $finish;
   end
 
@@ -102,12 +101,39 @@ module instr_register_test
   endfunction: print_results
 
   function void check_results; // din instruction word luam operand A, operand B, op code si calculam iar valorile si le verificam fata de cele din DUT (case)
-    if(opcode.name == "ZERO")
+    automatic longint expected_result = 0; // rezultat intern folosit la calcul, longint e pe 64 de biti, deci pot face comparatie
+    if(instruction_word.opc.name == "ZERO")
       expected_result = 0;
-    else if(opcode.name == "PASSA")
-      expected_result = operand_a;
-    else if(opcode.name == "PASSB")
-      expected_result = operand_b; 
-  endfunction check_results
+    else if(instruction_word.opc.name == "PASSA")
+      expected_result = instruction_word.op_a;
+    else if(instruction_word.opc.name == "PASSB")
+      expected_result = instruction_word.op_b;
+    else if(instruction_word.opc.name == "ADD")
+      expected_result = instruction_word.op_a + instruction_word.op_b;
+    else if(instruction_word.opc.name == "SUB")
+      expected_result = instruction_word.op_a - instruction_word.op_b;
+    else if(instruction_word.opc.name == "MULT")
+      expected_result = instruction_word.op_a * instruction_word.op_b;
+    else if(instruction_word.opc.name == "DIV") begin
+      if(instruction_word.op_b == 0)
+        expected_result = 0;
+      else
+        expected_result = instruction_word.op_a / instruction_word.op_b;
+    end
+    else if(instruction_word.opc.name == "MOD")
+      expected_result = instruction_word.op_a % instruction_word.op_b;
+    
+    $display("Read pointer = %0d: ", read_pointer);
+    $display("  opcode = %0d (%s)", instruction_word.opc, instruction_word.opc.name);
+    $display("  operand_a = %0d",   instruction_word.op_a);
+    $display("  operand_b = %0d", instruction_word.op_b);
+    $display("  result = %0d", instruction_word.res);
+    $display("  expected result = %0d", expected_result);
+    
+    if(expected_result == instruction_word.res)
+      $display("OK: Expected result and the actual result are identical!\n");
+    else
+      $display("ERROR: Expected result and the actual result differ!\n");
+  endfunction: check_results
 
 endmodule: instr_register_test
