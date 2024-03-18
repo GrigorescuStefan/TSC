@@ -24,13 +24,16 @@ module instr_register_test
   parameter WRITE_NR = 10;
 
   int seed = 555;
+  int passed_tests = 0;
+  int failed_tests = 0;
+  instruction_t save_data [0:31];
 
   initial begin
-    $display("\n*************************************************************");
-    $display(  "***  THIS IS NOW A SELF-CHECKING TESTBENCH. YOU NO        ***");
-    $display(  "***  LONGER NEED TO VISUALLY VERIFY THE OUTPUT VALUES     ***");
-    $display(  "*** TO MATCH THE INPUT VALUES FOR EACH REGISTER LOCATION  ***");
-    $display(  "*************************************************************\n");
+    $display("\n************************************************************");
+    $display(  "***  THIS IS A SELF-CHECKING TESTBENCH. YOU DON'T        ***");
+    $display(  "***    NEED TO VISUALLY VERIFY THE OUTPUT VALUES         ***");
+    $display(  "*** TO MATCH THE INPUT VALUES FOR EACH REGISTER LOCATION ***");
+    $display(  "************************************************************\n");
 
     $display("\nReseting the instruction register...");
     write_pointer  = 5'h00;         // initialize write pointer
@@ -44,7 +47,10 @@ module instr_register_test
     @(posedge clk) load_en = 1'b1;  // enable writing to register
     // repeat (3) begin - 11/03/2024 - GS
     repeat (WRITE_NR) begin
-      @(posedge clk) randomize_transaction;
+      @(posedge clk) begin
+        randomize_transaction;
+        save_test_data;
+      end
       @(negedge clk) print_transaction;
     end
     @(posedge clk) load_en = 1'b0;  // turn-off writing to register
@@ -57,11 +63,15 @@ module instr_register_test
       // scoreboard to determine which addresses were written and
       // the expected values to be read back
       @(posedge clk) read_pointer = i;
-      @(negedge clk) print_results;
-      check_results;
+      @(negedge clk) test_data;
+      // @(negedge clk) print_results; 18.03.2024 -GS
+      // check_results;
     end
 
-    @(posedge clk) ;
+    @(posedge clk);
+    $display("\nNumber of passed tests: %0d (%0d%%)", passed_tests, passed_tests/WRITE_NR*100);
+    $display("Number of failed tests: %0d (%0d%%)", failed_tests, failed_tests/WRITE_NR*100);
+
     $display("\n*************************************************************");
     $display(  "***  THIS IS NOW A SELF-CHECKING TESTBENCH. YOU NO        ***");
     $display(  "***  LONGER NEED TO VISUALLY VERIFY THE OUTPUT VALUES     ***");
@@ -92,6 +102,29 @@ module instr_register_test
     $display("  operand_b = %0d\n", operand_b);
   endfunction: print_transaction
 
+  function void save_test_data;
+    save_data[write_pointer] = {opcode, operand_a, operand_b, 0};
+  endfunction: save_test_data
+
+  function void test_data;
+    if(save_data[read_pointer].opc != instruction_word.opc)begin
+      $display("Register Location %0d: DUT opcode %0d (%s), saved opcode %0d (%s)", read_pointer, instruction_word.opc, instruction_word.opc.name, save_data[read_pointer].opc, save_data[read_pointer].opc.name);
+      failed_tests++;
+    end
+    else if(save_data[read_pointer].op_a != instruction_word.op_a) begin
+      $display("Register Location %0d: DUT operand_a %0d, saved operand_a %0d", read_pointer, instruction_word.op_a, save_data[read_pointer].op_a);
+      failed_tests++;
+    end
+    else if(save_data[read_pointer].op_b != instruction_word.op_b) begin
+      $display("Register Location %0d: DUT operand_b %0d, saved operand_b %0d", read_pointer, instruction_word.op_b, save_data[read_pointer].op_b);
+      failed_tests ++;
+    end
+    else begin
+      $display("OK: Saved data matches the DUT data for location %0d", read_pointer);
+      passed_tests++;
+    end
+  endfunction: test_data;
+
   function void print_results;
     $display("Read from register location %0d: ", read_pointer);
     $display("  opcode = %0d (%s)", instruction_word.opc, instruction_word.opc.name);
@@ -120,8 +153,12 @@ module instr_register_test
       else
         expected_result = instruction_word.op_a / instruction_word.op_b;
     end
-    else if(instruction_word.opc.name == "MOD")
-      expected_result = instruction_word.op_a % instruction_word.op_b;
+    else if(instruction_word.opc.name == "MOD") begin
+      if(instruction_word.op_b == 0)
+        expected_result = 0;
+      else
+        expected_result = instruction_word.op_a % instruction_word.op_b;
+    end
     
     $display("Read pointer = %0d: ", read_pointer);
     $display("  opcode = %0d (%s)", instruction_word.opc, instruction_word.opc.name);
