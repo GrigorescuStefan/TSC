@@ -20,8 +20,10 @@ module instr_register_test
 
   timeunit 1ns/1ns;
 
-  parameter READ_NR = 9;
-  parameter WRITE_NR = 10;
+  parameter READ_NR = 49;
+  parameter WRITE_NR = 50;
+  parameter write_order = 0; // 0 - incremental, 1 - random, 2 - decremental
+  parameter read_order = 0; // 0 - incremental, 1 - random, 2 - decremental
 
   int seed = 555;
   int passed_tests = 0;
@@ -40,6 +42,8 @@ module instr_register_test
     read_pointer   = 5'h1F;         // initialize read pointer
     load_en        = 1'b0;          // initialize load control line
     reset_n       <= 1'b0;          // assert reset_n (active low)
+    foreach (save_data[i])
+      save_data[i] = '{opc:ZERO,default:0};  // reset to all zeros
     repeat (2) @(posedge clk) ;     // hold in reset for 2 clock cycles
     reset_n        = 1'b1;          // deassert reset_n (active low)
 
@@ -62,15 +66,21 @@ module instr_register_test
       // later labs will replace this loop with iterating through a
       // scoreboard to determine which addresses were written and
       // the expected values to be read back
-      @(posedge clk) read_pointer = i;
+      @(posedge clk) begin
+        if(read_order == 0)
+          read_pointer = i;
+        if(read_order == 1)
+          read_pointer = $unsigned($random)%32;
+        if(read_order == 2)
+          read_pointer = 31 - (i % 32);
+      end
       @(negedge clk) test_data;
       // @(negedge clk) print_results; 18.03.2024 -GS
       // check_results;
     end
 
     @(posedge clk);
-    $display("\nNumber of passed tests: %0d (%0d%%)", passed_tests, passed_tests/WRITE_NR*100);
-    $display("Number of failed tests: %0d (%0d%%)", failed_tests, failed_tests/WRITE_NR*100);
+    final_report;
 
     $display("\n*************************************************************");
     $display(  "***  THIS IS NOW A SELF-CHECKING TESTBENCH. YOU NO        ***");
@@ -89,10 +99,16 @@ module instr_register_test
     // write_pointer values in a later lab
     //
     static int temp = 0;
+    static int temp2 = 31;
     operand_a     <= $random(seed)%16;                 // between -15 and 15
     operand_b     <= $unsigned($random)%16;            // between 0 and 15
     opcode        <= opcode_t'($unsigned($random)%8);  // between 0 and 7, cast to opcode_t type
-    write_pointer <= temp++;
+    if(write_order == 0)
+      write_pointer <= temp++;
+    if(write_order == 1)
+      write_pointer <= $unsigned($random)%32;
+    if(write_order == 2)
+      write_pointer <= temp2--;
   endfunction: randomize_transaction
 
   function void print_transaction;
@@ -117,10 +133,10 @@ module instr_register_test
     end
     else if(save_data[read_pointer].op_b != instruction_word.op_b) begin
       $display("Register Location %0d: DUT operand_b %0d, saved operand_b %0d", read_pointer, instruction_word.op_b, save_data[read_pointer].op_b);
-      failed_tests ++;
+      failed_tests++;
     end
     else begin
-      $display("OK: Saved data matches the DUT data for location %0d", read_pointer);
+      // $display("OK: Saved data matches the DUT data for location %0d", read_pointer);
       passed_tests++;
     end
   endfunction: test_data;
@@ -172,5 +188,14 @@ module instr_register_test
     else
       $display("ERROR: Expected result and the actual result differ!\n");
   endfunction: check_results
+
+  function void final_report;
+    if(passed_tests + failed_tests != WRITE_NR || passed_tests + failed_tests > WRITE_NR)
+      $display("\nYou have tested only %0d out of %0d!", passed_tests + failed_tests, WRITE_NR);
+    else begin
+      $display("\nNumber of passed tests: %0d (%0d%%)", passed_tests, (passed_tests * 100) / WRITE_NR);
+      $display("Number of failed tests: %0d (%0d%%)", failed_tests, (failed_tests * 100) / WRITE_NR);
+    end
+  endfunction: final_report
 
 endmodule: instr_register_test
