@@ -20,10 +20,10 @@ module instr_register_test
 
   timeunit 1ns/1ns;
 
-  parameter READ_NR = 49;
   parameter WRITE_NR = 50;
-  parameter write_order = 0; // 0 - incremental, 1 - random, 2 - decremental
-  parameter read_order = 0; // 0 - incremental, 1 - random, 2 - decremental
+  parameter READ_NR = 49;
+  parameter WRITE_ORDER = 0; // 0 - incremental, 1 - random, 2 - decremental
+  parameter READ_ORDER = 0; // 0 - incremental, 1 - random, 2 - decremental
 
   int seed = 555;
   int passed_tests = 0;
@@ -67,11 +67,11 @@ module instr_register_test
       // scoreboard to determine which addresses were written and
       // the expected values to be read back
       @(posedge clk) begin
-        if(read_order == 0)
+        if(READ_ORDER == 0)
           read_pointer = i;
-        if(read_order == 1)
+        if(READ_ORDER == 1)
           read_pointer = $unsigned($random)%32;
-        if(read_order == 2)
+        if(READ_ORDER == 2)
           read_pointer = 31 - (i % 32);
       end
       @(negedge clk) test_data;
@@ -103,11 +103,11 @@ module instr_register_test
     operand_a     <= $random(seed)%16;                 // between -15 and 15
     operand_b     <= $unsigned($random)%16;            // between 0 and 15
     opcode        <= opcode_t'($unsigned($random)%8);  // between 0 and 7, cast to opcode_t type
-    if(write_order == 0)
+    if(WRITE_ORDER == 0)
       write_pointer <= temp++;
-    if(write_order == 1)
+    if(WRITE_ORDER == 1)
       write_pointer <= $unsigned($random)%32;
-    if(write_order == 2)
+    if(WRITE_ORDER == 2)
       write_pointer <= temp2--;
   endfunction: randomize_transaction
 
@@ -190,8 +190,10 @@ module instr_register_test
   endfunction: check_results
 
   function void final_report;
-    if(passed_tests + failed_tests != WRITE_NR || passed_tests + failed_tests > WRITE_NR)
+    if(passed_tests + failed_tests != WRITE_NR && passed_tests + failed_tests < WRITE_NR)
       $display("\nYou have tested only %0d out of %0d!", passed_tests + failed_tests, WRITE_NR);
+    else if(passed_tests + failed_tests > WRITE_NR)
+      $display("\nYou have %0d tests and only %0d values!", passed_tests + failed_tests, WRITE_NR);
     else begin
       $display("\nNumber of passed tests: %0d (%0d%%)", passed_tests, (passed_tests * 100) / WRITE_NR);
       $display("Number of failed tests: %0d (%0d%%)", failed_tests, (failed_tests * 100) / WRITE_NR);
