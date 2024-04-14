@@ -24,6 +24,7 @@ module instr_register_test
   parameter READ_NR = 49;
   parameter WRITE_ORDER = 0; // 0 - incremental, 1 - random, 2 - decremental
   parameter READ_ORDER = 0; // 0 - incremental, 1 - random, 2 - decremental
+  parameter CASE_NAME;
 
   int seed = 555;
   int passed_tests = 0;
@@ -55,7 +56,7 @@ module instr_register_test
         randomize_transaction;
         save_test_data;
       end
-      @(negedge clk) print_transaction;
+      // @(negedge clk) print_transaction; - 14/04/2024 - GS
     end
     @(posedge clk) load_en = 1'b0;  // turn-off writing to register
 
@@ -81,6 +82,7 @@ module instr_register_test
 
     @(posedge clk);
     final_report;
+    overall_report;
 
     $display("\n*************************************************************");
     $display(  "***  THIS IS NOW A SELF-CHECKING TESTBENCH. YOU NO        ***");
@@ -199,5 +201,16 @@ module instr_register_test
       $display("Number of failed tests: %0d (%0d%%)", failed_tests, (failed_tests * 100) / WRITE_NR);
     end
   endfunction: final_report
+
+  function void overall_report;
+  int file;
+  file = $fopen("../reports/regression_status.txt", "a");
+  if(failed_tests != 0) begin
+    $fwrite(file, "Case %s: failed\n", CASE_NAME);
+  end else begin
+    $fwrite(file, "Case %s: passed\ns", CASE_NAME);
+  end
+  $fclose(file);
+  endfunction: overall_report
 
 endmodule: instr_register_test
