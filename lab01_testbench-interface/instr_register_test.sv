@@ -25,8 +25,9 @@ module instr_register_test
   parameter WRITE_ORDER = 0; // 0 - incremental, 1 - random, 2 - decremental
   parameter READ_ORDER = 0; // 0 - incremental, 1 - random, 2 - decremental
   parameter CASE_NAME;
+  parameter SEED_VAL = 555;
 
-  int seed = 555;
+  int seed = SEED_VAL;
   int passed_tests = 0;
   int failed_tests = 0;
   instruction_t save_data [0:31];
@@ -56,8 +57,9 @@ module instr_register_test
         randomize_transaction;
         save_test_data;
       end
-      // @(negedge clk) print_transaction; - 14/04/2024 - GS
+      @(negedge clk) print_transaction;
     end
+    @(posedge clk) save_test_data; // DEBUGGED: suprascrie ultima tranzactie, ca sa nu verifice cu date vechi/neactualizate
     @(posedge clk) load_en = 1'b0;  // turn-off writing to register
 
     // read back and display same three register locations
@@ -208,7 +210,7 @@ module instr_register_test
   if(failed_tests != 0) begin
     $fwrite(file, "Case %s: failed\n", CASE_NAME);
   end else begin
-    $fwrite(file, "Case %s: passed\ns", CASE_NAME);
+    $fwrite(file, "Case %s: passed\n", CASE_NAME);
   end
   $fclose(file);
   endfunction: overall_report
