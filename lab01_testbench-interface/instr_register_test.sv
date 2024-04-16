@@ -180,7 +180,10 @@ module instr_register_test
         expected_result = instruction_word.op_a % instruction_word.op_b;
     end
     else if(instruction_word.opc.name == "POW") begin
-      expected_result = instruction_word.op_a ** instruction_word.op_b;
+      if(instruction_word.op_a == 0 && instruction_word.op_b == 0)
+        expected_result = 1;
+      else
+        expected_result = instruction_word.op_a ** instruction_word.op_b;
     end
     
     $display("Read pointer = %0d: ", read_pointer);
