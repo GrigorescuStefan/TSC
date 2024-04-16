@@ -40,6 +40,7 @@ import instr_register_pkg::*;  // user-defined types are defined in instr_regist
         MULT:     iw_reg[write_pointer] = '{opcode, operand_a, operand_b, operand_a * operand_b};
         DIV:      iw_reg[write_pointer] = '{opcode, operand_a, operand_b, operand_b == 0 ? 0 : operand_a / operand_b};
         MOD:      iw_reg[write_pointer] = '{opcode, operand_a, operand_b, operand_b == 0 ? 0 : operand_a % operand_b};
+        POW:      iw_reg[write_pointer] = '{opcode, operand_a, operand_b, operand_a ** operand_b};
         default:  iw_reg[write_pointer] = '{opc:ZERO, default:0};
       endcase
     end

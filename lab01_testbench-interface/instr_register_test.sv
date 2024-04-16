@@ -59,7 +59,7 @@ module instr_register_test
       end
       @(negedge clk) print_transaction;
     end
-    @(posedge clk) save_test_data; // DEBUGGED: suprascrie ultima tranzactie, ca sa nu verifice cu date vechi/neactualizate
+    save_test_data; // DEBUGGED: suprascrie ultima tranzactie, ca sa nu verifice cu date vechi/neactualizate
     @(posedge clk) load_en = 1'b0;  // turn-off writing to register
 
     // read back and display same three register locations
@@ -106,7 +106,7 @@ module instr_register_test
     static int temp2 = 31;
     operand_a     <= $random(seed)%16;                 // between -15 and 15
     operand_b     <= $unsigned($random)%16;            // between 0 and 15
-    opcode        <= opcode_t'($unsigned($random)%8);  // between 0 and 7, cast to opcode_t type
+    opcode        <= opcode_t'($unsigned($random)%9);  // between 0 and 7, cast to opcode_t type // opcode modified to accomodate the POW operator
     if(WRITE_ORDER == 0)
       write_pointer <= temp++;
     if(WRITE_ORDER == 1)
@@ -178,6 +178,9 @@ module instr_register_test
         expected_result = 0;
       else
         expected_result = instruction_word.op_a % instruction_word.op_b;
+    end
+    else if(instruction_word.opc.name == "POW") begin
+      expected_result = instruction_word.op_a ** instruction_word.op_b;
     end
     
     $display("Read pointer = %0d: ", read_pointer);
